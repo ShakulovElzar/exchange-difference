@@ -1,15 +1,3 @@
-// добавить точки на тысячах
-// добавить плюс по графику реструктуризации
-брать ачало года
-Курс и сумму в сомах выделить
-Остаток на начало года брать 31 декабря от отчетного года
-
-34097.28
-27850
-30667.35
-
--24419.72
-
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
