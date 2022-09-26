@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
 import axios from "axios";
 import { Link } from "react-router-dom";
@@ -33,10 +33,10 @@ const JournalTable = () => {
   const [formattedDateFirst, setFormattedDateFirst] = useState("");
   const [dateSecond, setDateSecond] = useState(null);
   const [formattedDateSecond, setFormattedDateSecond] = useState("");
+  const [allFiltersCleared, setAllFiltersCleared] = useState(false);
   // counter states
   const [sumCounterType, setSumCounterType] = useState("default");
   const [sumCounterAmount, setSumCounterAmount] = useState("");
-  const [counterIsLoading, setCounterIsLoading] = useState(false);
   const [counterError, setCounterError] = useState("");
 
   const columns = [
@@ -71,24 +71,7 @@ const JournalTable = () => {
     },
   ];
 
-  const fetchFilterData = () => {
-    axios.get("http://10.100.4.104:8001/api/v1/organization/").then((res) => {
-      setOrganizationsData(res.data);
-    });
-    axios
-      .get("http://10.100.4.104:8001/api/v1/organization_type/")
-      .then((res) => {
-        setOrganizationTypesData(res.data);
-      });
-    axios.get("http://10.100.4.104:8001/api/v1/valuta/").then((res) => {
-      setCurrenciesData(res.data);
-    });
-  };
-
-  const fetchUsers = async (page, returnSum) => {
-    setLoading(true);
-    let requestLink = `http://10.100.4.104:8001/api/v1/organization_exchange_difference/?`;
-
+  const addFiltersToLink = (requestLink) => {
     if (chosenOrganization !== "") {
       requestLink += `organization=${chosenOrganization}&`;
     }
@@ -104,6 +87,26 @@ const JournalTable = () => {
     if (formattedDateSecond !== "") {
       requestLink += `end_date=${formattedDateSecond}&`;
     }
+  };
+
+  const fetchFilterData = () => {
+    axios.get("http://10.100.4.104:8001/api/v1/organization/").then((res) => {
+      setOrganizationsData(res.data);
+    });
+    axios
+      .get("http://10.100.4.104:8001/api/v1/organization_type/")
+      .then((res) => {
+        setOrganizationTypesData(res.data);
+      });
+    axios.get("http://10.100.4.104:8001/api/v1/valuta/").then((res) => {
+      setCurrenciesData(res.data);
+    });
+  };
+
+  const fetchUsers = async (page) => {
+    setLoading(true);
+    let requestLink = `http://10.100.4.104:8001/api/v1/organization_exchange_difference/?`;
+    addFiltersToLink(requestLink);
 
     const response = await axios.get(
       requestLink + `page=${page}&per_page=${perPage}`
@@ -126,6 +129,7 @@ const JournalTable = () => {
     setDateSecond(null);
     setFormattedDateFirst("");
     setFormattedDateSecond("");
+    setAllFiltersCleared(!allFiltersCleared);
   };
 
   const handlePerRowsChange = async (newPerPage, page) => {
@@ -145,29 +149,18 @@ const JournalTable = () => {
       setCounterError("Выберите тип рассчета");
       return;
     }
-    setCounterIsLoading(true);
+    const loaderIcon = document.getElementsByClassName(
+      "spinner-border spinner-border-sm d-none"
+    )[0];
+    loaderIcon.classList.remove("d-none");
     setCounterError("");
     setSumCounterAmount("");
 
     let requestLink = `http://10.100.4.104:8001/api/v1/organization_exchange_difference/?`;
+    addFiltersToLink(requestLink);
 
-    if (chosenOrganization !== "") {
-      requestLink += `organization=${chosenOrganization}&`;
-    }
-    if (chosenOrganizationType !== "") {
-      requestLink += `organization_type=${chosenOrganizationType}&`;
-    }
-    if (chosenCurrency !== "") {
-      requestLink += `valuta=${chosenCurrency}&`;
-    }
-    if (formattedDateFirst !== "") {
-      requestLink += `start_date=${formattedDateFirst}&`;
-    }
-    if (formattedDateSecond !== "") {
-      requestLink += `end_date=${formattedDateSecond}&`;
-    }
     axios
-      .get(requestLink + `page=1&per_page=10000`)
+      .get(requestLink + `page=1&per_page=1000000`)
       .then((response) => {
         let sum = 0;
         if (sumCounterType === "soms") {
@@ -181,6 +174,7 @@ const JournalTable = () => {
           }
         }
         setSumCounterAmount(sum);
+        loaderIcon.classList.add("d-none");
       })
       .catch((error) => {
         console.log(error);
@@ -188,9 +182,12 @@ const JournalTable = () => {
   };
 
   useEffect(() => {
-    fetchUsers(1);
     fetchFilterData();
   }, []);
+
+  useEffect(() => {
+    fetchUsers(1);
+  }, [allFiltersCleared]);
 
   const customStyles = {
     // rows: {
@@ -348,8 +345,16 @@ const JournalTable = () => {
             <div className="text-danger" style={{ fontSize: 15 }}>
               {counterError.length !== 0 && counterError}
             </div>
-            <button className="btn btn-primary" onClick={handleSumCounter}>
+            <button
+              className="btn btn-primary text-start"
+              onClick={handleSumCounter}
+            >
               Рассчитать
+              <span
+                className="spinner-border spinner-border-sm ms-3 d-none"
+                role="status"
+                aria-hidden="true"
+              ></span>
             </button>
           </div>
         </div>
