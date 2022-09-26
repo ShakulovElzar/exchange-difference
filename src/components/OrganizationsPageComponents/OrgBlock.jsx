@@ -1,44 +1,58 @@
-import React, { forwardRef, useEffect, useState } from "react";
+import React, { forwardRef, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { ru } from "date-fns/esm/locale";
 import { format } from "date-fns";
+import { MyInputForDatePicker } from "../MyInputForDatePicker/MyInputForDatePicker";
+import MyUnderlinedBlock from "../MyUnderlinedBlock/MyUnderlinedBlock";
 
-const OrgFirstBlock = ({ blockData, chosenCurrencyID, text }) => {
+const OrgFirstBlock = ({ blockData, chosenCurrencyID, text, reportYear }) => {
   const { format } = require("date-fns");
   const [date, setDate] = useState(new Date());
+
   const [formattedDate, setFormattedDate] = useState(
     format(date, "yyyy-MM-dd")
   );
-  const [balance, setBalance] = useState("");
-  const [currency, setCurrency] = useState("");
-  const [sum, setSum] = useState("0");
+  const [balanceForUseEffect, setBalanceForUseEffect] = useState();
+  const balanceRef = useRef();
+  const [currency, setCurrency] = useState("0");
+  const [sum, setSum] = useState(null);
   const [error, setError] = useState("");
+  const numberFormatter = Intl.NumberFormat("en-US");
 
   const getRate = () => {
-    if (/[a-zA-Z]/.test(balance)) return;
+    if (/[a-zA-Z]/.test(balanceRef.current.value)) {
+      setError("Уберите буквы из поля");
+      return;
+    }
     axios
       .get(
         `http://10.100.4.104:8001/api/v1/get_valuta_by_date/${chosenCurrencyID}/${formattedDate}/`
       )
       .then((res) => {
         setCurrency(res.data.rate);
-        setSum(res.data.rate * balance);
+        setSum(
+          JSON.parse(res.data.rate) * JSON.parse(balanceRef.current.value)
+        );
         setError("");
         blockData({
-          balance: Number.parseFloat(balance).toFixed(2),
+          balance: Number.parseFloat(balanceRef.current.value).toFixed(2),
           date: formattedDate,
-          currency: Number.parseFloat(currency).toFixed(2),
-          sum: Number.parseFloat(res.data.rate * balance).toFixed(2),
+          currency: Number.parseFloat(res.data.rate).toFixed(2),
+          sum: Number.parseFloat(
+            res.data.rate * balanceRef.current.value
+          ).toFixed(2),
         });
       })
-      .catch(() => {
+      .catch((error) => {
         setError(error.response.data.error_message);
+        setSum("");
+        setCurrency("");
       });
   };
   const getDataAndCount = () => {
-    if (balance === null) return;
+    if (balanceRef.current.value === null) return;
     if (chosenCurrencyID === undefined) {
       setCurrency("");
       setSum("");
@@ -49,18 +63,17 @@ const OrgFirstBlock = ({ blockData, chosenCurrencyID, text }) => {
 
   useEffect(() => {
     getDataAndCount();
-  }, [balance, formattedDate]);
+  }, [formattedDate, balanceForUseEffect]);
 
-  // ui
-  const MyInputForDatePicker = forwardRef(({ value, onClick }, ref) => (
-    <button
-      className="form-control text-dark" // btn btn-outline-secondary
-      onClick={onClick}
-      ref={ref}
-    >
-      {value}
-    </button>
-  ));
+  useEffect(() => {
+    if (text === "Остаток на начало года") {
+      let d = new Date();
+      if (isNaN(reportYear) || reportYear === "") return;
+      d.setFullYear(JSON.parse(reportYear) - 1, 11, 31);
+      setDate(d);
+      getDataAndCount();
+    }
+  }, [reportYear]);
 
   return (
     <div className="row">
@@ -69,8 +82,10 @@ const OrgFirstBlock = ({ blockData, chosenCurrencyID, text }) => {
         <input
           type="text"
           className="form-control mb-3"
-          value={balance}
-          onChange={(event) => setBalance(event.target.value)}
+          ref={balanceRef}
+          onChange={(event) => {
+            setBalanceForUseEffect(event.target.value);
+          }}
           placeholder="Числовое значение"
         />
       </div>
@@ -90,26 +105,10 @@ const OrgFirstBlock = ({ blockData, chosenCurrencyID, text }) => {
         />
       </div>
       <div className="col-5">
-        <span>Курс:</span>
-        <div className="d-inline-block border-bottom border-dark p-1 col-2">
-          <span className={!isNaN(currency) ? "text-body" : "text-white"}>
-            {currency}
-          </span>
-        </div>
+        <MyUnderlinedBlock text="Курс" value={currency} />
       </div>
       <div className="col-7 d">
-        <span>Сумма в сомах:</span>
-        <div
-          className={
-            sum !== "NaN" || !isNaN(sum)
-              ? "text-dark d-inline-block"
-              : "text-white d-inline-block"
-          }
-        >
-          <div className="d-inline-block border-bottom border-dark p-1">
-            {Number.parseFloat(sum).toFixed(2)}
-          </div>
-        </div>
+        <MyUnderlinedBlock text="Сумма в сомах" value={sum} />
       </div>
       <p className="text-danger">{error}</p>
     </div>
