@@ -122,8 +122,8 @@ const JournalTable = () => {
     setChosenOrganization("");
     setChosenOrganizationType("");
     setChosenCurrency("");
-    setDateFirst(new Date());
-    setDateSecond(new Date());
+    setDateFirst(null);
+    setDateSecond(null);
     setFormattedDateFirst("");
     setFormattedDateSecond("");
   };
