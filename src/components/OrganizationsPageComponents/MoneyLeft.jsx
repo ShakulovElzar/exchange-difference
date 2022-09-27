@@ -29,7 +29,7 @@ const MoneyLeft = ({ b4, sumM, text, blockData, chosenCurrencyID }) => {
     } else {
       axios
         .get(
-          `http://10.100.4.104:8001/api/v1/get_valuta_by_date/${chosenCurrencyID}/${formattedDate}/`
+          `${process.env.REACT_APP_API_LINK}/get_valuta_by_date/${chosenCurrencyID}/${formattedDate}/`
         )
         .then((res) => {
           setPrice(res.data.rate);

@@ -14,7 +14,7 @@ const FormsByIdPage = () => {
   useEffect(() => {
     axios
       .get(
-        `http://10.100.4.104:8001/api/v1/organization_exchange_difference/${params.id}/`
+        `${process.env.REACT_APP_API_LINK}/organization_exchange_difference/${params.id}/`
       )
       .then((res) => {
         setData(res.data);

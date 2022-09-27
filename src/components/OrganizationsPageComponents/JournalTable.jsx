@@ -29,14 +29,21 @@ const JournalTable = () => {
   const [chosenOrganizationType, setChosenOrganizationType] = useState("");
   const [chosenCurrency, setChosenCurrency] = useState("");
   const { format } = require("date-fns");
+  // date from
   const [dateFirst, setDateFirst] = useState(null);
   const [formattedDateFirst, setFormattedDateFirst] = useState("");
+  // date until
   const [dateSecond, setDateSecond] = useState(null);
   const [formattedDateSecond, setFormattedDateSecond] = useState("");
+  // date for sum counter
+  const [dateCounter, setDateCounter] = useState(null);
+  const [formattedDateCounter, setFormattedDateCounter] = useState("");
   const [allFiltersCleared, setAllFiltersCleared] = useState(false);
   // counter states
   const [sumCounterType, setSumCounterType] = useState("default");
   const [sumCounterAmount, setSumCounterAmount] = useState("");
+  const [sumCounterAmountTimesRate, setSumCounterAmountTimesRate] =
+    useState("");
   const [counterError, setCounterError] = useState("");
 
   const columns = [
@@ -87,26 +94,27 @@ const JournalTable = () => {
     if (formattedDateSecond !== "") {
       requestLink += `end_date=${formattedDateSecond}&`;
     }
+    return requestLink;
   };
 
   const fetchFilterData = () => {
-    axios.get("http://10.100.4.104:8001/api/v1/organization/").then((res) => {
+    axios.get(`${process.env.REACT_APP_API_LINK}/organization/`).then((res) => {
       setOrganizationsData(res.data);
     });
     axios
-      .get("http://10.100.4.104:8001/api/v1/organization_type/")
+      .get(`${process.env.REACT_APP_API_LINK}/organization_type/`)
       .then((res) => {
         setOrganizationTypesData(res.data);
       });
-    axios.get("http://10.100.4.104:8001/api/v1/valuta/").then((res) => {
+    axios.get(`${process.env.REACT_APP_API_LINK}/valuta/`).then((res) => {
       setCurrenciesData(res.data);
     });
   };
 
   const fetchUsers = async (page) => {
     setLoading(true);
-    let requestLink = `http://10.100.4.104:8001/api/v1/organization_exchange_difference/?`;
-    addFiltersToLink(requestLink);
+    let requestLink = `${process.env.REACT_APP_API_LINK}/organization_exchange_difference/?`;
+    requestLink = addFiltersToLink(requestLink);
 
     const response = await axios.get(
       requestLink + `page=${page}&per_page=${perPage}`
@@ -136,7 +144,7 @@ const JournalTable = () => {
     setLoading(true);
 
     const response = await axios.get(
-      `http://10.100.4.104:8001/api/v1/organization_exchange_difference/?page=${page}&per_page=${newPerPage}`
+      `${process.env.REACT_APP_API_LINK}/organization_exchange_difference/?page=${page}&per_page=${newPerPage}`
     );
 
     setData(response.data.items);
@@ -156,8 +164,8 @@ const JournalTable = () => {
     setCounterError("");
     setSumCounterAmount("");
 
-    let requestLink = `http://10.100.4.104:8001/api/v1/organization_exchange_difference/?`;
-    addFiltersToLink(requestLink);
+    let requestLink = `${process.env.REACT_APP_API_LINK}/organization_exchange_difference/?`;
+    requestLink = addFiltersToLink(requestLink);
 
     axios
       .get(requestLink + `page=1&per_page=1000000`)
@@ -172,6 +180,23 @@ const JournalTable = () => {
           for (let i = 0; i < response.data.total; i++) {
             sum += Number(response.data.items[i].sum_amount);
           }
+        }
+        if (dateCounter !== null) {
+          axios
+            .get(`${process.env.REACT_APP_API_LINK}/valuta/${chosenCurrency}/`)
+            .then((res) => {
+              axios
+                .get(
+                  `${process.env.REACT_APP_API_LINK}/get_valuta_by_date/${res.data.code}/${formattedDateCounter}/`
+                )
+                .then((response) => {
+                  setSumCounterAmountTimesRate(
+                    Number(response.data.rate) * sum
+                  );
+                })
+                .catch((error) => console.log(error));
+            })
+            .catch((error) => console.log(error));
         }
         setSumCounterAmount(sum);
         loaderIcon.classList.add("d-none");
@@ -208,7 +233,6 @@ const JournalTable = () => {
       },
     },
   };
-
   return (
     <div>
       <div
@@ -356,6 +380,24 @@ const JournalTable = () => {
                 aria-hidden="true"
               ></span>
             </button>
+          </div>
+          <div className="col-6">
+            <DatePicker
+              selected={dateCounter}
+              closeOnScroll={true}
+              dateFormat="dd-MM-yyyy"
+              customInput={<MyInputForDatePicker />}
+              maxDate={new Date()}
+              locale={ru}
+              onChange={(date) => {
+                setDateCounter(date);
+                setFormattedDateCounter(format(date, "yyyy-MM-dd"));
+              }}
+            />
+          </div>
+          <div className="mt-3">
+            <span className="fw-bold">Сумма по дате:</span>{" "}
+            {numberFormatter.format(sumCounterAmountTimesRate)}
           </div>
         </div>
       </div>

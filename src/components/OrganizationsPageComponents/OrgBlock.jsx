@@ -11,6 +11,7 @@ const OrgFirstBlock = ({ blockData, chosenCurrencyID, text, reportYear }) => {
   const { format } = require("date-fns");
   const [date, setDate] = useState(new Date());
 
+  const [prevFormattedDate, setPrevFormattedDate] = useState();
   const [formattedDate, setFormattedDate] = useState(
     format(date, "yyyy-MM-dd")
   );
@@ -26,30 +27,41 @@ const OrgFirstBlock = ({ blockData, chosenCurrencyID, text, reportYear }) => {
       setError("Уберите буквы из поля");
       return;
     }
-    axios
-      .get(
-        `http://10.100.4.104:8001/api/v1/get_valuta_by_date/${chosenCurrencyID}/${formattedDate}/`
-      )
-      .then((res) => {
-        setCurrency(res.data.rate);
-        setSum(
-          JSON.parse(res.data.rate) * JSON.parse(balanceRef.current.value)
-        );
-        setError("");
-        blockData({
-          balance: Number.parseFloat(balanceRef.current.value).toFixed(2),
-          date: formattedDate,
-          currency: Number.parseFloat(res.data.rate).toFixed(2),
-          sum: Number.parseFloat(
-            res.data.rate * balanceRef.current.value
-          ).toFixed(2),
-        });
-      })
-      .catch((error) => {
-        setError(error.response.data.error_message);
-        setSum("");
-        setCurrency("");
+    if (prevFormattedDate === formattedDate) {
+      setCurrency(currency);
+      setSum(Number(currency) * Number(balanceRef.current.value));
+      setError("");
+      blockData({
+        balance: Number.parseFloat(balanceRef.current.value).toFixed(2),
+        date: formattedDate,
+        currency: Number.parseFloat(currency).toFixed(2),
+        sum: Number.parseFloat(currency * balanceRef.current.value).toFixed(2),
       });
+    } else {
+      axios
+        .get(
+          `${process.env.REACT_APP_API_LINK}/get_valuta_by_date/${chosenCurrencyID}/${formattedDate}/`
+        )
+        .then((res) => {
+          setCurrency(res.data.rate);
+          setSum(Number(res.data.rate) * Number(balanceRef.current.value));
+          setError("");
+          blockData({
+            balance: Number.parseFloat(balanceRef.current.value).toFixed(2),
+            date: formattedDate,
+            currency: Number.parseFloat(res.data.rate).toFixed(2),
+            sum: Number.parseFloat(
+              res.data.rate * balanceRef.current.value
+            ).toFixed(2),
+          });
+          setPrevFormattedDate(formattedDate);
+        })
+        .catch((error) => {
+          setError(error.response.data.error_message);
+          setSum("");
+          setCurrency("");
+        });
+    }
   };
   const getDataAndCount = () => {
     if (balanceRef.current.value === null) return;
